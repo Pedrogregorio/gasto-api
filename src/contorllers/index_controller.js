@@ -47,8 +47,10 @@ router.get('/inicio', async (req, res)=>{
 })
 
 router.get('/historico', async (req, res)=>{
-    const db_ajuda = await Ajuda.find({})
-    const db_conta = await Conta.find({})
+    const c = await Conta.find({})
+    const a = await Ajuda.find({})
+    const db_ajuda = a.reverse()
+    const db_conta = c.reverse()
     return res.json({ajuda: db_ajuda, conta:db_conta})
 })
 
@@ -84,6 +86,9 @@ router.post('/historico/conta/detalhamento', async (req, res)=>{
 router.post('/add_ajuda', async (req, res)=>{
     try {
         const data = req.body
+        if(!data){
+            return {message: "Preencha os campos"}
+        }
         await Ajuda.create(data)
         const db_saldo = await Saldo.find({})
         let saldo = Number(db_saldo[0].valor) + Number(data.valor)
@@ -108,13 +113,35 @@ router.post('/desativar_conta', async (req, res)=>{
     try {
         const db_conta = req.body
         const db_saldo = await Saldo.find({})
-        if(Number(db_conta.valor) > Number(db_saldo[0].valor)){
-            let saldo = Number(db_saldo[0].valor) - Number(db_conta.valor)
+        let current_conta = Conta.findById(db_conta.conta.id).exec()
+
+        const valor_com_parcela = (Number(db_conta.conta.valor) * Number(db_conta.conta.parcela))
+        
+        if(current_conta.ativa == false){
+            return res.json({status: 301, message: `Essa conta ja foi paga`})
+        }
+
+        if(Number(db_conta.conta.valor) > Number(db_saldo[0].valor)){
+            let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
             return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
         }
-        let saldo_novo = Number(db_saldo[0].valor) - Number(db_conta.valor)
-        await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
-        await Conta.updateOne({_id: db_conta._id}, {ativa: false})
+
+        else if ((Number(db_conta.conta.valor) > valor_com_parcela)) {
+            let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
+            return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
+        }
+
+        if (db_conta.all_parcelas == true) {
+            let saldo_novo = Number(db_saldo[0].valor) - Number(valor_com_parcela)
+            await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
+            await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false})    
+        }
+        else if(db_conta.all_parcelas == false){
+            let saldo_novo = Number(db_saldo[0].valor) - Number(db_conta.conta.conta)
+            await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
+            current_conta.valor = Number(current_conta.valor) - 1
+            await Conta.updateOne({_id: db_conta.conta._id}, {ativa: true, parcela: current_conta.valor})    
+        }
         return res.json({status: 200, message:'Conta paga com sucesso'})
     } catch(error) {
         return res.json({status: 400, message: error.message})
