@@ -113,37 +113,46 @@ router.post('/desativar_conta', async (req, res)=>{
     try {
         const db_conta = req.body
         const db_saldo = await Saldo.find({})
-        let current_conta = Conta.findById(db_conta.conta.id).exec()
-
-        const valor_com_parcela = (Number(db_conta.conta.valor) * Number(db_conta.conta.parcela))
-        
+        let current_conta = await Conta.findById(db_conta.conta._id).exec()
+        const valor_com_parcela = (Number(current_conta.valor) * Number(current_conta.parcela))
         if(current_conta.ativa == false){
             return res.json({status: 301, message: `Essa conta ja foi paga`})
         }
-
         if(Number(db_conta.conta.valor) > Number(db_saldo[0].valor)){
             let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
             return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
         }
-
-        else if ((Number(db_conta.conta.valor) > valor_com_parcela)) {
+        if ((Number(db_conta.conta.valor) > valor_com_parcela)) {
             let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
             return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
         }
-
         if (db_conta.all_parcelas == true) {
             let saldo_novo = Number(db_saldo[0].valor) - Number(valor_com_parcela)
             await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
             await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false})    
         }
         else if(db_conta.all_parcelas == false){
-            let saldo_novo = Number(db_saldo[0].valor) - Number(db_conta.conta.conta)
-            await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
-            current_conta.valor = Number(current_conta.valor) - 1
-            await Conta.updateOne({_id: db_conta.conta._id}, {ativa: true, parcela: current_conta.valor})    
+            console.log("Aqui 5")
+            let saldo_novo = Number(db_saldo[0].valor) - Number(current_conta.valor)
+
+            console.log(`saldo novo ${saldo_novo}`)
+            await Saldo.updateOne({id_saldo:'1'}, {valor: saldo_novo})
+
+            console.log(`curenr conta${current_conta}`)
+            if(current_conta.parcela !== 1){
+                current_conta.parcela = Number(current_conta.parcela) - 1
+                console.log(`curenr conta${current_conta}`)
+                await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})        
+            } else {
+                console.log(`curenr conta${current_conta}`)
+                await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})    
+            }
         }
+
+        console.log("Aqui 6")
         return res.json({status: 200, message:'Conta paga com sucesso'})
     } catch(error) {
+        console.log(error)
         return res.json({status: 400, message: error.message})
     }
 })

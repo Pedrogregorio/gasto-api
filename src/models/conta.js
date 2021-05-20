@@ -16,6 +16,10 @@ const contaSchema = new mongoose.Schema({
         type: Number,
         required: false
     },
+    pagar_ate:{
+        type: String,
+        required: false
+    },
     ativa:{
         type: Boolean, 
         default: true,
