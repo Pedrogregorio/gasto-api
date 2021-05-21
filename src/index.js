@@ -11,4 +11,4 @@ app.set('trust proxy', 1);
 
 require('./contorllers/index_controller')(app);
 
-app.listen(3001)
+app.listen(process.env.PORT || 3000)
