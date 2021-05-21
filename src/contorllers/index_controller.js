@@ -132,27 +132,20 @@ router.post('/desativar_conta', async (req, res)=>{
             await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false})    
         }
         else if(db_conta.all_parcelas == false){
-            console.log("Aqui 5")
             let saldo_novo = Number(db_saldo[0].valor) - Number(current_conta.valor)
 
-            console.log(`saldo novo ${saldo_novo}`)
             await Saldo.updateOne({id_saldo:'1'}, {valor: saldo_novo})
 
-            console.log(`curenr conta${current_conta}`)
             if(current_conta.parcela !== 1){
                 current_conta.parcela = Number(current_conta.parcela) - 1
-                console.log(`curenr conta${current_conta}`)
                 await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})        
             } else {
-                console.log(`curenr conta${current_conta}`)
                 await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})    
             }
         }
 
-        console.log("Aqui 6")
         return res.json({status: 200, message:'Conta paga com sucesso'})
     } catch(error) {
-        console.log(error)
         return res.json({status: 400, message: error.message})
     }
 })
