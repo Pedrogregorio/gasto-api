@@ -87,15 +87,15 @@ router.post('/add_ajuda', async (req, res)=>{
     try {
         const data = req.body
         if(!data){
-            return {message: "Preencha os campos"}
+            return {error: {message: "Preencha os campos"}}
         }
         await Ajuda.create(data)
         const db_saldo = await Saldo.find({})
-        let saldo = Number(db_saldo[0].valor) + Number(data.valor)
+        let saldo = (Number(db_saldo[0].valor) + Number(data.valor)).toFixed(2)
         await Saldo.updateOne({id_saldo: "1"},{valor: saldo})
-        return res.json({status: 200})
+        return res.json({status: 200, message: 'Ajuda adicionada com sucesso'})
     } catch (error){
-        return res.json({erro: error.message, status: 400})
+        return res.json({error:{message: 'Nao foi possivel adicionar ajuda', status: 400}})
     }
 })
 
@@ -103,9 +103,9 @@ router.post('/add_conta', async (req, res)=>{
     try {
         const data = req.body
         await Conta.create(data)
-        return res.json({status: 200})
+        return res.json({status: 200, message: 'Conta adicionada com sucesso'})
     } catch (error){
-        return res.json({erro: error.message, status: 400})
+        return res.json({error:{message: 'Nao foi possivel adicionar a conta', status: 400}})
     }
 })
 
@@ -116,29 +116,29 @@ router.post('/desativar_conta', async (req, res)=>{
         let current_conta = await Conta.findById(db_conta.conta._id).exec()
         const valor_com_parcela = (Number(current_conta.valor) * Number(current_conta.parcela))
         if(current_conta.ativa == false){
-            return res.json({status: 301, message: `Essa conta ja foi paga`})
+            return res.json({error:{status: 301, message: `Essa conta ja foi paga`}})
         }
         if(Number(db_conta.conta.valor) > Number(db_saldo[0].valor)){
-            let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
-            return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
+            let saldo = (Number(db_saldo[0].valor) - Number(db_conta.conta.valor)).toFixed(2)
+            return res.json({error:{status: 301, message: `Seu saldo é insuficiente (${saldo})`}})
         }
         if ((Number(db_conta.conta.valor) > valor_com_parcela)) {
-            let saldo = Number(db_saldo[0].valor) - Number(db_conta.conta.valor)
-            return res.json({status: 301, message: `Seu saldo é insuficiente (${saldo})`})
+            let saldo = (Number(db_saldo[0].valor) - Number(db_conta.conta.valor)).toFixed(2)
+            return res.json({error:{status: 301, message: `Seu saldo é insuficiente (${saldo})`}})
         }
         if (db_conta.all_parcelas == true) {
-            let saldo_novo = Number(db_saldo[0].valor) - Number(valor_com_parcela)
+            let saldo_novo = (Number(db_saldo[0].valor) - Number(valor_com_parcela)).toFixed(2)
             await Saldo.updateOne({id_saldo:'1'}, {valor: String(saldo_novo)})
             await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false})    
         }
         else if(db_conta.all_parcelas == false){
-            let saldo_novo = Number(db_saldo[0].valor) - Number(current_conta.valor)
+            let saldo_novo = (Number(db_saldo[0].valor) - Number(current_conta.valor).toFixed(2))
 
             await Saldo.updateOne({id_saldo:'1'}, {valor: saldo_novo})
 
             if(current_conta.parcela !== 1){
                 current_conta.parcela = Number(current_conta.parcela) - 1
-                await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})        
+                await Conta.updateOne({_id: db_conta.conta._id}, {ativa: true, parcela: current_conta.parcela})        
             } else {
                 await Conta.updateOne({_id: db_conta.conta._id}, {ativa: false, parcela: current_conta.parcela})    
             }
@@ -146,7 +146,7 @@ router.post('/desativar_conta', async (req, res)=>{
 
         return res.json({status: 200, message:'Conta paga com sucesso'})
     } catch(error) {
-        return res.json({status: 400, message: error.message})
+        return res.json({error:{status: 400, message: 'Nao foi possivel pagar a conta'}})
     }
 })
 

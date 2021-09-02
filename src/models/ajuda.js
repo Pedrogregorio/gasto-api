@@ -11,6 +11,10 @@ const ajudaSchema = new mongoose.Schema({
     valor:{
         type: String,
         required: true
+    },
+    mes:{
+        type: String,
+        required: true
     }
 })
 
